@@ -2,6 +2,8 @@ const getState = ({ getStore, getActions, setStore }) => {
 	return {
 		store: {
 			message: null,
+			token: null,
+            user: null,
 			demo: [
 				{
 					title: "FIRST",
@@ -14,6 +16,7 @@ const getState = ({ getStore, getActions, setStore }) => {
 					initial: "white"
 				}
 			]
+
 		},
 		actions: {
 			// Use getActions to call a function within a fuction
@@ -33,22 +36,50 @@ const getState = ({ getStore, getActions, setStore }) => {
 					console.log("Error loading message from backend", error)
 				}
 			},
-			changeColor: (index, color) => {
-				//get the store
-				const store = getStore();
-
-				//we have to loop the entire demo array to look for the respective index
-				//and change its color
-				const demo = store.demo.map((elm, i) => {
-					if (i === index) elm.background = color;
-					return elm;
-				});
-
-				//reset the global store
-				setStore({ demo: demo });
-			}
-		}
-	};
+			login: async (email, password) => {
+                try {
+                    const response = await fetch(process.env.BACKEND_URL + "api/login", {
+                        method: "POST",
+                        body: JSON.stringify({
+                            email: email,
+                            password: password
+                        }),
+                        headers: {
+                            "Content-Type": "application/json"
+                        }
+                    });
+                    if (response.status === 200) {
+                        const data = await response.json();
+                        localStorage.setItem("token", data.access_token);
+                        setStore({ token: data.access_token, user: data.user });
+                    } else {
+                        console.error("Failed to login");
+                    }
+                } catch (error) {
+                    console.error("Error logging in:", error);
+                }
+            },
+            getUserData: async () => {
+                const store = getStore();
+                try {
+                    const response = await fetch(process.env.BACKEND_URL + "api/private", {
+                        method: "GET",
+                        headers: {
+                            "Authorization": "Bearer " + store.token
+                        }
+                    });
+                    if (response.status === 200) {
+                        const data = await response.json();
+                        setStore({ user: data.user });
+                    } else {
+                        console.error("Failed to fetch user data");
+                    }
+                } catch (error) {
+                    console.error("Error fetching user data:", error);
+                }
+            }
+        }
+    };
 };
 
 export default getState;
